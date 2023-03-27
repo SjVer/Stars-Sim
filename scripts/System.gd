@@ -4,4 +4,8 @@ class_name System
 var id : int
 var name : String
 
-var component_ids : PoolIntArray
+class Component:
+	var id: int
+	var coords: Vector3
+
+var components : Array

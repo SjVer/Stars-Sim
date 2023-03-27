@@ -13,16 +13,16 @@ extends Node
 
 var sql = SQLiteWrapper.new()
 var mutex := Mutex.new()
-const print_errs := false
+
+const print_errs := true
 
 func _init():
 	sql.set_path("res://isdb_new")
-	sql.set_verbosity_level(sql.VerbosityLevel.VERY_VERBOSE)
 	assert(sql.open_db())
 
 func calculate_coords(
-	ra_h: float, ra_m: float, ra_s: float,
-	dec_d: float, dec_m: float, dec_s: float,
+	ra_h: int, ra_m: int, ra_s: float,
+	dec_d: int, dec_m: int, dec_s: float,
 	dist: float
 ) -> Vector3:
 	var a := ra_h * 15 + ra_m * 0.25 + ra_s * 0.004166
@@ -51,7 +51,6 @@ func find_stars_in_chunk(chunk_pos: Vector3) -> PoolIntArray:
 		dec_arcsec, distance, id FROM system_positions
 	""")
 	var data = sql.query_result
-	print(data)
 	mutex.unlock()
 
 	# find close stars
@@ -62,7 +61,7 @@ func find_stars_in_chunk(chunk_pos: Vector3) -> PoolIntArray:
 		# filter out invalid stars
 		if id % 100 != 0:
 			continue
-
+			
 		var star_coords := calculate_coords(
 			d["ra_hr"],
 			d["ra_min"],
@@ -75,7 +74,7 @@ func find_stars_in_chunk(chunk_pos: Vector3) -> PoolIntArray:
 
 		if is_inside(chunk_min_coord, chunk_max_coord, star_coords):
 			star_ids.push_back(id)
-
+	
 	return star_ids
 
 func try_single_query(query: String, default):

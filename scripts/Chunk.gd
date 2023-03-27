@@ -19,7 +19,6 @@ func load_stars():
 		star.owner = self
 		
 		star_count += 1
-
 	loaded = true
 
 func _process(_delta):
