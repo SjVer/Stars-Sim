@@ -1,12 +1,23 @@
 tool
 extends Node
 
+# NOTE:
+# 	the following can be used for table migration:
+#	```sql
+#	UPDATE system_positions
+#	SET
+#	  new_col 	= (SELECT CAST(p.OldCOl AS NEW_TYPE) FROM OldTable p WHERE CAST(p.OwnerID AS INTEGER) = id),
+#	  ...
+#	WHERE id IN (SELECT CAST(p.OwnerID AS INTEGER) FROM Positions p)
+#	```
+
 var sql = SQLiteWrapper.new()
 var mutex := Mutex.new()
 const print_errs := false
 
 func _init():
-	sql.set_path("res://isdb")
+	sql.set_path("res://isdb_new")
+	sql.set_verbosity_level(sql.VerbosityLevel.VERY_VERBOSE)
 	assert(sql.open_db())
 
 func calculate_coords(
@@ -36,29 +47,30 @@ func find_stars_in_chunk(chunk_pos: Vector3) -> PoolIntArray:
 	# get all positions
 	mutex.lock()
 	sql.query("""
-		SELECT RA_hr, RA_min, RA_sec, Dec_deg, Dec_arcmin,
-		Dec_arcsec, Distance, OwnerID FROM Positions
+		SELECT ra_hr, ra_min, ra_sec, dec_deg, dec_arcmin,
+		dec_arcsec, distance, id FROM system_positions
 	""")
 	var data = sql.query_result
+	print(data)
 	mutex.unlock()
 
 	# find close stars
 	var star_ids := PoolIntArray()
 	for d in data:
-		var id : int = d["OwnerID"].to_int()
+		var id : int = d["id"]
 
 		# filter out invalid stars
 		if id % 100 != 0:
 			continue
 
 		var star_coords := calculate_coords(
-			d["RA_hr"].to_float(),
-			d["RA_min"].to_float(),
-			d["RA_sec"].to_float(),
-			d["Dec_deg"].to_float(),
-			d["Dec_arcmin"].to_float(),
-			d["Dec_arcsec"].to_float(),
-			d["Distance"].to_float()
+			d["ra_hr"],
+			d["ra_min"],
+			d["ra_sec"],
+			d["dec_deg"],
+			d["dec_arcmin"],
+			d["dec_arcsec"],
+			d["distance"]
 		)
 
 		if is_inside(chunk_min_coord, chunk_max_coord, star_coords):

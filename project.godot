@@ -28,12 +28,18 @@ _global_script_classes=[ {
 "class": "StarData",
 "language": "GDScript",
 "path": "res://scripts/StarData.gd"
+}, {
+"base": "Resource",
+"class": "System",
+"language": "GDScript",
+"path": "res://scripts/System.gd"
 } ]
 _global_script_class_icons={
 "Chunk": "",
 "SQLiteWrapper": "",
 "Star": "",
-"StarData": ""
+"StarData": "",
+"System": ""
 }
 
 [application]
