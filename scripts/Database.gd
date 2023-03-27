@@ -11,6 +11,11 @@ extends Node
 #	WHERE id IN (SELECT CAST(p.OwnerID AS INTEGER) FROM Positions p)
 #	```
 
+# About THE DATABASE:
+# the table `system_positions` contains all `System`s and
+# their positions. One `System` has one or more components,
+# or `Star`s.
+
 var sql = SQLiteWrapper.new()
 var mutex := Mutex.new()
 
@@ -40,7 +45,7 @@ func is_inside(vmin: Vector3, vmax: Vector3, v: Vector3) -> bool:
 	   and vmin.y <= v.y and vmax.y > v.y \
 	   and vmin.z <= v.z and vmax.z > v.z
 
-func find_stars_in_chunk(chunk_pos: Vector3) -> PoolIntArray:
+func find_systems_in_chunk(chunk_pos: Vector3) -> Array:
 	var chunk_min_coord := chunk_pos * Constants.chunk_size
 	var chunk_max_coord := (chunk_pos + Vector3.ONE) * Constants.chunk_size
 
@@ -54,7 +59,7 @@ func find_stars_in_chunk(chunk_pos: Vector3) -> PoolIntArray:
 	mutex.unlock()
 
 	# find close stars
-	var star_ids := PoolIntArray()
+	var systems := Array()
 	for d in data:
 		var id : int = d["id"]
 
@@ -62,7 +67,7 @@ func find_stars_in_chunk(chunk_pos: Vector3) -> PoolIntArray:
 		if id % 100 != 0:
 			continue
 			
-		var star_coords := calculate_coords(
+		var coords := calculate_coords(
 			d["ra_hr"],
 			d["ra_min"],
 			d["ra_sec"],
@@ -72,10 +77,13 @@ func find_stars_in_chunk(chunk_pos: Vector3) -> PoolIntArray:
 			d["distance"]
 		)
 
-		if is_inside(chunk_min_coord, chunk_max_coord, star_coords):
-			star_ids.push_back(id)
+		if is_inside(chunk_min_coord, chunk_max_coord, coords):
+			var system := SystemData.new()
+			system.id = id
+			system.coords = coords
+			systems.push_back(system)
 	
-	return star_ids
+	return systems
 
 func try_single_query(query: String, default):
 	mutex.lock()
@@ -95,47 +103,23 @@ func calculate_rel_diameter(arcsecs: float, distance: float) -> float:
 			/ (2 * Constants.solar_radius)
 	)
 
-func get_star_data(id: int) -> StarData:
-	var data := StarData.new()
-	data.id = id
-
-	# name
-	var name_data = try_single_query("""
-		SELECT Name FROM ProperNames
-		WHERE (OwnerID / 100) = %d AND IsSystemName = \"True\"
-	""" % (id / 100), null)
-	if name_data:
-		data.name = name_data["Name"]
-		data.missing_name = false
+func get_star_data(system_data: SystemData) -> StarData:
+	# system name
+	var system_name_data = try_single_query("""
+		SELECT name FROM proper_names
+		WHERE id = %d AND is_system_name = 1
+	""" % system_data.id, null)
+	if system_name_data:
+		system_data.name = system_name_data["name"]
 	elif print_errs:
-		printerr("No name for system #%d" % id)
-	
-	# coordinates
-	var pos_data = try_single_query("""
-		SELECT RA_hr, RA_min, RA_sec, Dec_deg, Dec_arcmin,
-		Dec_arcsec, Distance FROM Positions WHERE OwnerID=\"%d\"
-	""" % id, null)
-	if pos_data:
-		data.coords = calculate_coords(
-			pos_data["RA_hr"].to_float(),
-			pos_data["RA_min"].to_float(),
-			pos_data["RA_sec"].to_float(),
-			pos_data["Dec_deg"].to_float(),
-			pos_data["Dec_arcmin"].to_float(),
-			pos_data["Dec_arcsec"].to_float(),
-			pos_data["Distance"].to_float()
-		)
-		data.missing_coords = false
-	elif print_errs:
-		printerr("No coordinates for system #d", id)
+		printerr("No proper name for system #%d" % system_data.id)
 
 	# components
-	# TODO: One system might have more components
-	#		we're ignoring those now!
+	# TODO: only gets the first component
 	var comp_data = try_single_query("""
-		SELECT * FROM Components WHERE
-		CAST(ID as INTEGER) > %d AND CAST(ID as INTEGER) <= %d
-	""" % [id, id + 9], null)
+		SELECT * FROM system_components WHERE
+		id > %d AND id <= %d
+	""" % [system_data.id, system_data.id + 9], null)
 	if comp_data:
 		data.comp_name = comp_data["Name"]
 		data.rel_mass = comp_data["Mass"].to_float()

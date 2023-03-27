@@ -8,16 +8,17 @@ var chunk_pos : Vector3
 var star_count := 0
 
 func load_stars():
-	var star_ids := Database.find_stars_in_chunk(chunk_pos)
-	for id in star_ids:
-		var star_data := Database.get_star_data(id)
+	var system_datas = Database.find_systems_in_chunk(chunk_pos)
+	for system_data in system_datas:
+		# TODO: returns first component only
+		var star_data := Database.get_star_data(system_data)
 		if not star_data.is_valid(): continue
 
 		var star = preload("res://scenes/Star.tscn").instance()
 		star.configure(star_data, translation)
 		add_child(star)
 		star.owner = self
-		
+
 		star_count += 1
 	loaded = true
 
