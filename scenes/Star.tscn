@@ -15,12 +15,6 @@ emission_on_uv2 = false
 rings = 60
 material = SubResource( 1 )
 script = ExtResource( 1 )
-id = 0
-name = ""
-comp_name = ""
-coords = Vector3( 0, 0, 0 )
-rel_mass = 0.0
-rel_diameter = 0.0
 
 [node name="Label" type="Label" parent="."]
 margin_right = 40.0

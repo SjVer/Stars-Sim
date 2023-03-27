@@ -21,11 +21,17 @@ func _input(event):
 	direction = direction.normalized().rotated(Vector3.UP, rotation.y)
 
 	var accell = -Input.get_action_strength("scroll_down") + Input.get_action_strength("scroll_up") 
-	speed = max(int(speed + speed * accell * scroll_sensitivity), 1)
+	speed = max(int(speed + speed * accell * scroll_sensitivity), 10)
 
-func _physics_process(delta):
+func _process(delta):
 	move_and_slide(direction * speed * delta)
-	$Label.text = "Speed: %d ly/s" % (speed * delta)
+
+	var lpos : Vector3 = translation / Constants.distance_scale
+	$Label.text = "Speed: %d ly/s\n(%.2f, %.2f, %.2f)" % [
+		speed * delta,
+		lpos.x, lpos.y, lpos.z	
+	]
 
 func _ready():
+	# $Camera.far = sqrt(3) * Chunk.abs_size
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED

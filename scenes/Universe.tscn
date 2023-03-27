@@ -8,7 +8,7 @@ script = ExtResource( 1 )
 
 [node name="Origin" type="Spatial" parent="."]
 
-[node name="KinematicBody" parent="." instance=ExtResource( 4 )]
+[node name="Player" parent="." instance=ExtResource( 4 )]
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 5.30734 )
 
 [node name="Label" type="Label" parent="."]
@@ -16,5 +16,5 @@ anchor_left = 1.0
 anchor_right = 1.0
 margin_left = -107.0
 margin_bottom = 14.0
-text = "8 stars"
+text = "2 stars"
 align = 2

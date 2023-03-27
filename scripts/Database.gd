@@ -2,6 +2,7 @@ tool
 extends Node
 
 var sql = SQLiteWrapper.new()
+var mutex := Mutex.new()
 const print_errs := false
 
 func _init():
@@ -23,17 +24,27 @@ func calculate_coords(
 		dist * sin(b)
 	)
 
-func find_neighbors(coords: Vector3, distance: float) -> PoolIntArray:
+func is_inside(vmin: Vector3, vmax: Vector3, v: Vector3) -> bool:
+	return vmin.x <= v.x and vmax.x > v.x \
+	   and vmin.y <= v.y and vmax.y > v.y \
+	   and vmin.z <= v.z and vmax.z > v.z
+
+func find_stars_in_chunk(chunk_pos: Vector3) -> PoolIntArray:
+	var chunk_min_coord := chunk_pos * Constants.chunk_size
+	var chunk_max_coord := (chunk_pos + Vector3.ONE) * Constants.chunk_size
+
 	# get all positions
+	mutex.lock()
 	sql.query("""
 		SELECT RA_hr, RA_min, RA_sec, Dec_deg, Dec_arcmin,
 		Dec_arcsec, Distance, OwnerID FROM Positions
-		ORDER BY Distance
 	""")
+	var data = sql.query_result
+	mutex.unlock()
 
 	# find close stars
 	var star_ids := PoolIntArray()
-	for d in sql.query_result:
+	for d in data:
 		var id : int = d["OwnerID"].to_int()
 
 		# filter out invalid stars
@@ -50,27 +61,27 @@ func find_neighbors(coords: Vector3, distance: float) -> PoolIntArray:
 			d["Distance"].to_float()
 		)
 
-		if coords.distance_to(star_coords) <= distance:
+		if is_inside(chunk_min_coord, chunk_max_coord, star_coords):
 			star_ids.push_back(id)
 
 	return star_ids
 
 func try_single_query(query: String, default):
-	if not sql.query(query):
-		return default
-	elif sql.query_result.size() == 0:
-		return default
-	else:
-		return sql.query_result[0]
+	mutex.lock()
 
-const m_per_ly := 9460700000000000.0
-const solar_radius := 695700000.0
+	var result = default
+	if sql.query(query) and sql.query_result.size():
+		result = sql.query_result[0]
+
+	mutex.unlock()
+	return result
+
 func calculate_rel_diameter(arcsecs: float, distance: float) -> float:
 	# see https://en.wikipedia.org/wiki/Angular_diameter_distance
 	return (
-		(arcsecs * (distance * m_per_ly))
+		(arcsecs * (distance * Constants.m_per_ly))
 			/ 206265
-			/ (2 * solar_radius)
+			/ (2 * Constants.solar_radius)
 	)
 
 func get_star_data(id: int) -> StarData:
@@ -131,7 +142,7 @@ func get_star_data(id: int) -> StarData:
 			data.name = "#%d %s" % [id, data.comp_name]
 			data.missing_name = false
 		
-		data.missing_components = false
+		data.missing_components = data.rel_diameter <= 0
 	elif print_errs:
 		printerr("No components for star #%d" % id)
 

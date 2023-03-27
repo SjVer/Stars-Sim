@@ -1,13 +1,5 @@
-tool
 extends CSGSphere
 class_name Star
-
-# NOTE:
-# 	distance is in light-years
-#	size is in solar radii
-
-const size_scale := 1
-const coords_scale := 50
 
 var star_data := StarData.new()
 
@@ -41,28 +33,29 @@ func _get(property):
 		
 # functionality
 
-func configure(data: StarData):
+func configure(data: StarData, chunk_translation: Vector3):
 	star_data = data
 
 	name = "Star #%d" % data.id
-	radius = data.rel_diameter / 2.0 * size_scale
+	radius = data.rel_diameter / 2.0 * Constants.size_scale
 	# $Mesh.mesh.radius = radius
 	# $Mesh.mesh.height = radius * 2
 	# $Collider.shape.radius = radius
-	translation = data.coords * coords_scale
+	translation = data.coords * Constants.distance_scale - chunk_translation
 
 	# see http://www.vendian.org/mncharity/dir3/starcolor/
-	match data.spectral_class[0]:
-		"O": material.albedo_color = Color(155, 176, 255)
-		"B": material.albedo_color = Color(170, 191, 255)
-		"A": material.albedo_color = Color(202, 215, 255)
-		"F": material.albedo_color = Color(248, 247, 255)
-		"G": material.albedo_color = Color(255, 244, 234)
-		"K": material.albedo_color = Color(255, 210, 161)
-		"M": material.albedo_color = Color(255, 204, 111)
-		"D": material.albedo_color = Color.white
-		_: printerr("unknown spectral class ", data.spectral_class)
-	material.emission = material.albedo_color
+	if data.spectral_class != "":
+		match data.spectral_class[0]:
+			"O": material.albedo_color = Color(155, 176, 255)
+			"B": material.albedo_color = Color(170, 191, 255)
+			"A": material.albedo_color = Color(202, 215, 255)
+			"F": material.albedo_color = Color(248, 247, 255)
+			"G": material.albedo_color = Color(255, 244, 234)
+			"K": material.albedo_color = Color(255, 210, 161)
+			"M": material.albedo_color = Color(255, 204, 111)
+			"D": material.albedo_color = Color.white
+			_: printerr("unknown spectral class ", data.spectral_class)
+		material.emission = material.albedo_color
 
 # handlers
 
@@ -81,9 +74,10 @@ func _process(_delta):
 	var color := Color.red if star_data.id != 100 else Color.green
 	color.a = 1 - center_dist / 200
 	$Label.add_color_override("font_color", color)
+	var abs_dist := cam.global_translation.distance_to(global_translation)
 	$Label.text = "%s (%.2f ly)" % [
 		"#%d" % star_data.id if star_data.missing_name else star_data.name,
-		global_transform.origin.distance_to(cam.global_transform.origin) / coords_scale
+		abs_dist / Constants.distance_scale
 	]
 
 	var offset = Vector2(-$Label.rect_size.x / 2, $Label.rect_size.y / 2 - 20)
