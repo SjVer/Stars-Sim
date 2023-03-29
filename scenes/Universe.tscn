@@ -1,10 +1,52 @@
-[gd_scene load_steps=3 format=2]
+[gd_scene load_steps=9 format=2]
 
 [ext_resource path="res://scripts/Universe.gd" type="Script" id=1]
+[ext_resource path="res://shaders/stars.gdshader" type="Shader" id=2]
+[ext_resource path="res://shaders/system_positions.png" type="Texture" id=3]
 [ext_resource path="res://scenes/Player.tscn" type="PackedScene" id=4]
+
+[sub_resource type="ShaderMaterial" id=4]
+shader = ExtResource( 2 )
+shader_param/positions_texture = ExtResource( 3 )
+
+[sub_resource type="ViewportTexture" id=5]
+viewport_path = NodePath("Viewport")
+
+[sub_resource type="PanoramaSky" id=2]
+resource_local_to_scene = true
+panorama = SubResource( 5 )
+
+[sub_resource type="Environment" id=3]
+background_mode = 2
+background_sky = SubResource( 2 )
+background_sky_custom_fov = 70.0
+background_color = Color( 0, 0, 0, 0 )
+background_energy = 0.0
+background_canvas_max_layer = -1
+ambient_light_energy = 0.0
+ambient_light_sky_contribution = 0.0
+glow_enabled = true
+glow_levels/2 = true
+glow_levels/3 = false
+glow_levels/5 = false
+glow_intensity = 1.0
+glow_bloom = 0.5
+glow_blend_mode = 0
 
 [node name="Universe" type="Spatial"]
 script = ExtResource( 1 )
+
+[node name="Viewport" type="Viewport" parent="."]
+size = Vector2( 1024, 512 )
+render_target_update_mode = 3
+
+[node name="ColorRect" type="ColorRect" parent="Viewport"]
+material = SubResource( 4 )
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource( 3 )
 
 [node name="Origin" type="Spatial" parent="."]
 

@@ -1,13 +1,16 @@
 extends Spatial
 
+const thread_count := 1
 const unload_timeout := 10
 
 # variables
 
 var loaded_chunks := {}
-var unready_chunks := {}
+var unready_chunks := []
 var unloaded_chunks := {}
 var unloaded_chunks_epochs := {}
+
+var threads := []
 
 var star_count := 0
 
@@ -38,6 +41,7 @@ func update_chunks():
 			star_count -= chunk.star_count
 
 			# keep it around just in case
+			chunk.hide()
 			unloaded_chunks[pos] = chunk
 			unloaded_chunks_epochs[pos] = OS.get_ticks_msec()
 
@@ -54,26 +58,31 @@ func add_chunk(pos: Vector3):
 	if unloaded_chunks.has(pos):
 		load_done(pos, false, unloaded_chunks[pos])
 	else:
-		var thread := Thread.new()
-		assert(thread.start(self, "load_chunk", pos, 0) == OK)
-		unready_chunks[pos] = thread
+		for thread in threads:
+			if not thread.is_active():
+				assert(thread.start(self, "load_chunk", [pos, thread], 0) == OK)
+				unready_chunks.append(pos)
 
-func load_chunk(pos: Vector3):
+func load_chunk(data: Array):
+	var pos : Vector3 = data[0]
+	var thread : Thread = data[1]
+
 	# no need to load bc Chunk has no children by default
 	var chunk := Chunk.new()
 	chunk.translation = pos * Chunk.abs_size
 	chunk.chunk_pos = pos
 
 	chunk.load_stars()
-	call_deferred("load_done", pos, true, chunk)
+	call_deferred("load_done", pos, true, chunk, thread)
 
-func load_done(pos: Vector3, is_new: bool, chunk: Chunk):
+func load_done(pos: Vector3, is_new, chunk, thread: Thread = null):
 	if is_new:
-		unready_chunks[pos].wait_to_finish()
+		thread.wait_to_finish()
 		unready_chunks.erase(pos)
 		$Origin.add_child(chunk)
 		chunk.owner = self
 	else:
+		chunk.show()
 		unloaded_chunks_epochs.erase(pos)
 		unloaded_chunks.erase(pos)
 
@@ -82,11 +91,15 @@ func load_done(pos: Vector3, is_new: bool, chunk: Chunk):
 
 # handlers
 
+func _ready():
+	for _i in range(thread_count):
+		threads.append(Thread.new())
+
 func _process(_delta):
 	# if $Player.translation.length() > 10:
 	# 	$Origin.translation = -$Player.translation
 	# 	$Player.translation = Vector3.ZERO
-
+	
 	$Label.text = "%d/27 chunks\n%d stars" % [$Origin.get_child_count(), star_count]
 	update_chunks()
 

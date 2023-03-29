@@ -38,9 +38,6 @@ func configure(data: StarData, chunk_translation: Vector3):
 
 	name = "Star #%d" % data.id
 	radius = data.rel_diameter / 2.0 * Constants.size_scale
-	# $Mesh.mesh.radius = radius
-	# $Mesh.mesh.height = radius * 2
-	# $Collider.shape.radius = radius
 	translation = data.coords * Constants.distance_scale - chunk_translation
 
 	# see http://www.vendian.org/mncharity/dir3/starcolor/
@@ -60,6 +57,8 @@ func configure(data: StarData, chunk_translation: Vector3):
 # handlers
 
 func _process(_delta):
+	if not star_data: return
+
 	var cam := get_viewport().get_camera()
 	var pos_3d := global_transform.origin + Vector3.UP * star_data.rel_diameter / 2
 	var pos_2d := cam.unproject_position(pos_3d)
@@ -76,7 +75,7 @@ func _process(_delta):
 	$Label.add_color_override("font_color", color)
 	var abs_dist := cam.global_translation.distance_to(global_translation)
 	$Label.text = "%s (%.2f ly)" % [
-		"#%d" % star_data.id if star_data.missing_name else star_data.name,
+		star_data.get_name(),
 		abs_dist / Constants.distance_scale
 	]
 

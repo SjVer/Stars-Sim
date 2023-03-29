@@ -11,4 +11,4 @@ const distance_scale := 10
 const size_scale := 1
 
 # in ly
-const chunk_size := 10
+const chunk_size := 16

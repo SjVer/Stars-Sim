@@ -19,7 +19,7 @@ extends Node
 var sql = SQLiteWrapper.new()
 var mutex := Mutex.new()
 
-const print_errs := true
+const print_errs := false
 
 func _init():
 	sql.set_path("res://isdb_new")
@@ -81,6 +81,7 @@ func find_systems_in_chunk(chunk_pos: Vector3) -> Array:
 			var system := SystemData.new()
 			system.id = id
 			system.coords = coords
+			system.distance = d["distance"]
 			systems.push_back(system)
 	
 	return systems
@@ -114,43 +115,43 @@ func get_star_data(system_data: SystemData) -> StarData:
 	elif print_errs:
 		printerr("No proper name for system #%d" % system_data.id)
 
+	var star_data := StarData.new()
+	star_data.system_data = system_data
+
+	# TODO: idk man
+	star_data.coords = system_data.coords
+
 	# components
-	# TODO: only gets the first component
+	# TODO: only gets the first component for now
 	var comp_data = try_single_query("""
 		SELECT * FROM system_components WHERE
 		id > %d AND id <= %d
 	""" % [system_data.id, system_data.id + 9], null)
 	if comp_data:
-		data.comp_name = comp_data["Name"]
-		data.rel_mass = comp_data["Mass"].to_float()
+		star_data.id = comp_data["id"]
+		star_data.name = comp_data["name"]
+		star_data.rel_mass = comp_data["rel_mass"]
 
-		if comp_data["IsDiameterArcsec"] == "True":
-			data.rel_diameter = calculate_rel_diameter(
-				comp_data["Diameter"].to_float(),
-				pos_data["Distance"].to_float()
+		# get the proper diameter
+		if comp_data["diameter_is_arcsec"]:
+			star_data.rel_diameter = calculate_rel_diameter(
+				comp_data["diameter"],
+				system_data.distance
 			)
 		else:
-			data.rel_diameter = comp_data["Diameter"].to_float()
+			star_data.rel_diameter = comp_data["diameter"]
+		if star_data.rel_diameter == 0:
+			if print_errs:
+				printerr("Star #%d has an invalid diameter" % star_data.id)
+			star_data.missing_data = true
 
-		# temporary
-		if data.missing_name:
-			data.name = "#%d %s" % [id, data.comp_name]
-			data.missing_name = false
-		
-		data.missing_components = data.rel_diameter <= 0
+		# appearance stuff
+		if comp_data["spectral_class"]:
+			star_data.spectral_class = comp_data["spectral_class"]
+		if comp_data["luminocity_class"]:
+			star_data.luminocity_class = comp_data["luminocity_class"]
 	elif print_errs:
-		printerr("No components for star #%d" % id)
+		printerr("No component properties for system #%d" % system_data.id)
+		star_data.missing_data = true
 
-	# spectral data
-	var spec_id = comp_data["ID"] if comp_data else id
-	var spec_data = try_single_query("""
-		SELECT SpectralClass FROM Spectra
-		WHERE OwnerID = \"%s\"
-	""" % spec_id, null)
-	if spec_data:
-		data.spectral_class = spec_data["SpectralClass"]
-		data.missing_spectral = false
-	elif print_errs:
-		printerr("No spectral data for star #%d (#%s)" % id)
-
-	return data
+	return star_data

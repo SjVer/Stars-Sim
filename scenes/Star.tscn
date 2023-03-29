@@ -12,6 +12,7 @@ emission_operator = 0
 emission_on_uv2 = false
 
 [node name="Star" type="CSGSphere"]
+layers = 2
 rings = 60
 material = SubResource( 1 )
 script = ExtResource( 1 )
